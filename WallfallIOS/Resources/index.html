@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallfall: Titan Break</title>
+    <meta name="description" content="Фанатская браузерная мини-игра по мотивам аниме про титанов: защити внутренние стены, обходи титанов со спины и руби затылок.">
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap");
+
+        :root {
+            --bg: #07090d;
+            --panel: rgba(13, 17, 24, 0.88);
+            --panel-strong: rgba(8, 10, 16, 0.94);
+            --line: rgba(255, 255, 255, 0.08);
+            --text: #eef2f7;
+            --muted: #a8b3c2;
+            --gold: #f0ba63;
+            --red: #d45443;
+            --green: #64d2a5;
+            --blue: #6ab6ff;
+            --shadow: 0 20px 70px rgba(0, 0, 0, 0.42);
+            --radius: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: "Manrope", sans-serif;
+            color: var(--text);
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top, rgba(212, 84, 67, 0.16), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(106, 182, 255, 0.12), transparent 24%),
+                linear-gradient(180deg, #05070b, #0a1017 42%, #101722 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 42px 42px;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent);
+        }
+
+        #app {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+        }
+
+        .frame {
+            position: relative;
+            width: min(100%, 1280px);
+            aspect-ratio: 16 / 9;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: var(--shadow);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.22));
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background:
+                radial-gradient(circle at 50% 8%, rgba(255, 241, 208, 0.12), transparent 24%),
+                linear-gradient(180deg, #162131 0%, #17202d 25%, #141a23 55%, #0d1219 100%);
+        }
+
+        .hud {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 18px;
+        }
+
+        .hud-top,
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .panel,
+        .pill,
+        .objective,
+        .overlay-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            backdrop-filter: blur(14px);
+            box-shadow: var(--shadow);
+        }
+
+        .panel {
+            border-radius: var(--radius);
+            padding: 16px 18px;
+        }
+
+        .title {
+            font-family: "Orbitron", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.76rem;
+            color: var(--gold);
+        }
+
+        .headline {
+            font-family: "Orbitron", sans-serif;
+            font-size: clamp(1.25rem, 3vw, 2.4rem);
+            line-height: 1;
+            margin-top: 6px;
+        }
+
+        .subline {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.95rem;
+            max-width: 420px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(150px, 1fr));
+            gap: 10px;
+            min-width: min(100%, 360px);
+        }
+
+        .pill {
+            border-radius: 18px;
+            padding: 12px 14px;
+            min-width: 0;
+        }
+
+        .pill-label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .pill-value {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 1.05rem;
+        }
+
+        .bar {
+            position: relative;
+            width: 100%;
+            height: 10px;
+            margin-top: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .bar > span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            transition: width 120ms linear;
+        }
+
+        .bar-health > span {
+            background: linear-gradient(90deg, #ff6a5f, var(--red));
+        }
+
+        .bar-gas > span {
+            background: linear-gradient(90deg, #7cd6ff, var(--blue));
+        }
+
+        .bar-ammo > span {
+            background: linear-gradient(90deg, #fff2b7, var(--gold));
+        }
+
+        .objective {
+            align-self: center;
+            border-radius: 999px;
+            padding: 12px 18px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        .objective strong {
+            color: var(--text);
+        }
+
+        .hint-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 780px;
+        }
+
+        .hint-chip {
+            padding: 10px 12px;
+            border-radius: 999px;
+            background: rgba(8, 12, 20, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .hint-chip strong {
+            color: var(--text);
+        }
+
+        .mobile-controls {
+            position: absolute;
+            inset: auto 0 18px 0;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 22px;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .stick-zone,
+        .fire-button {
+            pointer-events: auto;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .stick-zone {
+            position: relative;
+            width: 124px;
+            height: 124px;
+            border-radius: 999px;
+            background: rgba(8, 12, 20, 0.48);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 0 30px rgba(145, 212, 255, 0.12), 0 14px 34px rgba(0, 0, 0, 0.32);
+        }
+
+        .stick-knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 54px;
+            height: 54px;
+            border-radius: 999px;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(145, 212, 255, 0.95), rgba(240, 186, 99, 0.82));
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        .fire-button {
+            width: 118px;
+            height: 118px;
+            border-radius: 999px;
+            color: #170f0b;
+            font-family: "Orbitron", sans-serif;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            background: radial-gradient(circle at 35% 25%, #fff0b8, #f0ba63 34%, #d45443 78%);
+            box-shadow: 0 18px 44px rgba(212, 84, 67, 0.42);
+        }
+
+        .fire-button:active {
+            transform: scale(0.96);
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            display: grid;
+            place-items: center;
+            padding: 22px;
+            background: linear-gradient(180deg, rgba(5, 8, 12, 0.2), rgba(5, 8, 12, 0.82));
+            transition: opacity 220ms ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .overlay-card {
+            width: min(100%, 780px);
+            border-radius: 30px;
+            padding: 28px;
+            background:
+                radial-gradient(circle at top right, rgba(240, 186, 99, 0.12), transparent 26%),
+                radial-gradient(circle at left center, rgba(212, 84, 67, 0.1), transparent 24%),
+                var(--panel-strong);
+        }
+
+        .overlay-topline {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--gold);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .overlay-topline::before {
+            content: "";
+            width: 44px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold));
+        }
+
+        .overlay h1 {
+            font-family: "Orbitron", sans-serif;
+            font-size: clamp(2rem, 6vw, 4.4rem);
+            line-height: 0.95;
+            margin: 14px 0 12px;
+            text-transform: uppercase;
+        }
+
+        .overlay p {
+            color: var(--muted);
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 62ch;
+        }
+
+        .overlay-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 22px;
+            margin-top: 26px;
+        }
+
+        .mode-card,
+        .control-card {
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 18px;
+        }
+
+        .mode-card h2,
+        .control-card h2 {
+            font-family: "Orbitron", sans-serif;
+            font-size: 1.06rem;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .mode-list,
+        .control-list {
+            display: grid;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.96rem;
+        }
+
+        .mode-list strong,
+        .control-list strong {
+            color: var(--text);
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            appearance: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .btn {
+            min-height: 56px;
+            padding: 0 22px;
+            border-radius: 999px;
+            font-weight: 800;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            color: #150f0b;
+            background: linear-gradient(135deg, #ffd085, var(--red));
+            box-shadow: 0 16px 30px rgba(212, 84, 67, 0.28);
+        }
+
+        .btn-secondary {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .result-box {
+            border-radius: 18px;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .result-box span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+
+        .result-box strong {
+            font-family: "Orbitron", sans-serif;
+            font-size: 1.16rem;
+        }
+
+        @media (max-width: 980px) {
+            .hud-top,
+            .hud-bottom,
+            .overlay-grid,
+            .result-grid {
+                grid-template-columns: 1fr;
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                width: 100%;
+            }
+
+            .objective {
+                align-self: stretch;
+            }
+        }
+
+        @media (max-width: 720px) {
+            #app {
+                padding: 0;
+            }
+
+            .frame {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+                border: none;
+            }
+
+            .hud {
+                padding: 12px;
+            }
+
+            .overlay-card {
+                padding: 20px;
+                border-radius: 0;
+                width: 100%;
+            }
+
+            .headline {
+                font-size: 1.3rem;
+            }
+
+            .subline {
+                font-size: 0.85rem;
+            }
+
+            .mobile-controls {
+                display: flex;
+            }
+        }
+
+        @media (pointer: coarse) {
+            .mobile-controls {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="frame">
+            <canvas id="game" width="1280" height="720" aria-label="Wallfall Titan Break"></canvas>
+
+            <div class="hud">
+                <div class="hud-top">
+                    <div class="panel">
+                        <div class="title">Wallfall: Titan Break</div>
+                        <div class="headline">Защити внутренние стены</div>
+                        <div class="subline">Маневрируй, прожигай газ ускорением, заходи за спину и бей только по затылку. Лобовая атака почти не работает.</div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="pill">
+                            <span class="pill-label">Здоровье</span>
+                            <div class="pill-value"><strong id="healthValue">100</strong><span>HP</span></div>
+                            <div class="bar bar-health"><span id="healthBar" style="width: 100%"></span></div>
+                        </div>
+                        <div class="pill">
+                            <span class="pill-label">Газ</span>
+                            <div class="pill-value"><strong id="gasValue">100</strong><span>%</span></div>
+                            <div class="bar bar-gas"><span id="gasBar" style="width: 100%"></span></div>
+                        </div>
+                        <div class="pill">
+                            <span class="pill-label">Harpoons</span>
+                            <div class="pill-value"><strong id="ammoValue">6</strong><span>shots</span></div>
+                            <div class="bar bar-ammo"><span id="ammoBar" style="width: 100%"></span></div>
+                        </div>
+                        <div class="pill">
+                            <span class="pill-label">Счет</span>
+                            <div class="pill-value"><strong id="scoreValue">0</strong><span>PTS</span></div>
+                        </div>
+                        <div class="pill">
+                            <span class="pill-label">Комбо</span>
+                            <div class="pill-value"><strong id="comboValue">x1</strong><span id="waveValue">Волна 1</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="objective" id="objectiveText">
+                    <strong>Цель:</strong> продержись первую волну и не дай титанам проломить центр города.
+                </div>
+
+                <div class="hud-bottom">
+                    <div class="hint-panel">
+                        <div class="hint-chip"><strong>WASD</strong> движение</div>
+                        <div class="hint-chip"><strong>Shift</strong> газовый рывок</div>
+                        <div class="hint-chip"><strong>ЛКМ / Пробел</strong> выстрел гарпуном</div>
+                        <div class="hint-chip"><strong>F</strong> удар клинками</div>
+                        <div class="hint-chip"><strong>Правый фланг</strong> безопаснее для обхода</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mobile-controls" aria-label="Touch controls">
+                <div class="stick-zone" id="moveStick" aria-label="Move">
+                    <div class="stick-knob" id="stickKnob"></div>
+                </div>
+                <button class="fire-button" id="touchFire" type="button">FIRE</button>
+            </div>
+
+            <div class="overlay" id="startOverlay">
+                <div class="overlay-card">
+                    <div class="overlay-topline">Фан-аркадка по мотивам</div>
+                    <h1>Wallfall<br>Titan Break</h1>
+                    <p>
+                        Это не просто кликер. Ты — боец маневренного отряда в последнем квартале перед внутренней стеной.
+                        Титаны прут к центру, и твоя задача — читать их развороты, держать темп и собирать серию убийств
+                        ударами по затылку, пока город не пал.
+                    </p>
+
+                    <div class="overlay-grid">
+                        <div class="mode-card">
+                            <h2>Как играть</h2>
+                            <div class="mode-list">
+                                <div><strong>1.</strong> Двигайся по улицам и не давай титанам добраться до центрального круга.</div>
+                                <div><strong>2.</strong> Ускоряйся через <strong>Shift</strong>, но следи за запасом газа.</div>
+                                <div><strong>3.</strong> Бей титана сзади: в секторе затылка урон выше и убийство быстрее.</div>
+                                <div><strong>4.</strong> Чем чище серия, тем выше множитель очков и тем жёстче следующая волна.</div>
+                            </div>
+                        </div>
+
+                        <div class="control-card">
+                            <h2>Условия поражения</h2>
+                            <div class="control-list">
+                                <div><strong>Стена падёт</strong>, если титаны слишком долго бьют центральное ядро.</div>
+                                <div><strong>Ты падёшь</strong>, если здоровье уйдёт в ноль от ударов титанов.</div>
+                                <div><strong>Газ</strong> восстановится сам, если перестать форсировать движение.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-primary" id="startButton">Начать бой</button>
+                        <button class="btn btn-secondary" id="practiceButton">Разминка без волн</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overlay hidden" id="gameOverOverlay">
+                <div class="overlay-card">
+                    <div class="overlay-topline" id="gameOverTopline">Отряд пал</div>
+                    <h1 id="gameOverTitle">Город прорван</h1>
+                    <p id="gameOverText">Ты держался достойно, но титаны продавили последнюю линию обороны. Собери новый маршрут и попробуй ещё раз.</p>
+
+                    <div class="result-grid">
+                        <div class="result-box"><span>Счет</span><strong id="finalScore">0</strong></div>
+                        <div class="result-box"><span>Убийств</span><strong id="finalKills">0</strong></div>
+                        <div class="result-box"><span>Волна</span><strong id="finalWave">1</strong></div>
+                        <div class="result-box"><span>Лучшая серия</span><strong id="finalCombo">x1</strong></div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-primary" id="restartButton">Снова в бой</button>
+                        <button class="btn btn-secondary" id="menuButton">В меню</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        const ui = {
+            healthValue: document.getElementById("healthValue"),
+            gasValue: document.getElementById("gasValue"),
+            ammoValue: document.getElementById("ammoValue"),
+            scoreValue: document.getElementById("scoreValue"),
+            comboValue: document.getElementById("comboValue"),
+            waveValue: document.getElementById("waveValue"),
+            healthBar: document.getElementById("healthBar"),
+            gasBar: document.getElementById("gasBar"),
+            ammoBar: document.getElementById("ammoBar"),
+            objectiveText: document.getElementById("objectiveText"),
+            startOverlay: document.getElementById("startOverlay"),
+            gameOverOverlay: document.getElementById("gameOverOverlay"),
+            gameOverTopline: document.getElementById("gameOverTopline"),
+            gameOverTitle: document.getElementById("gameOverTitle"),
+            gameOverText: document.getElementById("gameOverText"),
+            finalScore: document.getElementById("finalScore"),
+            finalKills: document.getElementById("finalKills"),
+            finalWave: document.getElementById("finalWave"),
+            finalCombo: document.getElementById("finalCombo"),
+            startButton: document.getElementById("startButton"),
+            practiceButton: document.getElementById("practiceButton"),
+            restartButton: document.getElementById("restartButton"),
+            menuButton: document.getElementById("menuButton"),
+            moveStick: document.getElementById("moveStick"),
+            stickKnob: document.getElementById("stickKnob"),
+            touchFire: document.getElementById("touchFire")
+        };
+
+        const world = {
+            width: canvas.width,
+            height: canvas.height,
+            gate: { x: canvas.width / 2, y: canvas.height / 2, radius: 78, hp: 1000, maxHp: 1000 }
+        };
+
+        const state = {
+            mode: "menu",
+            practice: false,
+            time: 0,
+            score: 0,
+            kills: 0,
+            combo: 1,
+            comboTimer: 0,
+            bestCombo: 1,
+            wave: 1,
+            waveTimer: 0,
+            spawnBudget: 0,
+            hitFlash: 0,
+            shake: 0
+        };
+
+        const input = {
+            keys: new Set(),
+            mouse: { x: world.width / 2, y: world.height / 2, down: false },
+            virtual: { dx: 0, dy: 0, active: false }
+        };
+
+        const player = {
+            x: world.width / 2,
+            y: world.height * 0.78,
+            vx: 0,
+            vy: 0,
+            radius: 18,
+            speed: 285,
+            boost: 540,
+            boostDrain: 36,
+            hp: 100,
+            maxHp: 100,
+            gas: 100,
+            maxGas: 100,
+            regenGas: 18,
+            slashCooldown: 0,
+            shotCooldown: 0,
+            ammo: 6,
+            maxAmmo: 6,
+            reloadTimer: 0,
+            invuln: 0,
+            facing: 0
+        };
+
+        const titans = [];
+        const particles = [];
+        const projectiles = [];
+        const slashArcs = [];
+        const floatingTexts = [];
+
+        function rand(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function distance(ax, ay, bx, by) {
+            return Math.hypot(ax - bx, ay - by);
+        }
+
+        function angleDiff(a, b) {
+            let diff = (a - b + Math.PI) % (Math.PI * 2) - Math.PI;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            return diff;
+        }
+
+        function resetRun(practice = false) {
+            state.mode = "running";
+            state.practice = practice;
+            state.time = 0;
+            state.score = 0;
+            state.kills = 0;
+            state.combo = 1;
+            state.comboTimer = 0;
+            state.bestCombo = 1;
+            state.wave = 1;
+            state.waveTimer = 0;
+            state.spawnBudget = practice ? 999999 : 6;
+            state.hitFlash = 0;
+            state.shake = 0;
+
+            player.x = world.width / 2;
+            player.y = world.height * 0.78;
+            player.vx = 0;
+            player.vy = 0;
+            player.hp = player.maxHp;
+            player.gas = player.maxGas;
+            player.slashCooldown = 0;
+            player.shotCooldown = 0;
+            player.ammo = player.maxAmmo;
+            player.reloadTimer = 0;
+            player.invuln = 0;
+            player.facing = -Math.PI / 2;
+
+            world.gate.hp = world.gate.maxHp;
+
+            titans.length = 0;
+            particles.length = 0;
+            projectiles.length = 0;
+            slashArcs.length = 0;
+            floatingTexts.length = 0;
+
+            ui.startOverlay.classList.add("hidden");
+            ui.gameOverOverlay.classList.add("hidden");
+            updateObjective();
+            updateUI();
+        }
+
+        function backToMenu() {
+            state.mode = "menu";
+            ui.startOverlay.classList.remove("hidden");
+            ui.gameOverOverlay.classList.add("hidden");
+        }
+
+        function endRun(reason) {
+            state.mode = "gameover";
+
+            if (reason === "gate") {
+                ui.gameOverTopline.textContent = "Прорыв титанов";
+                ui.gameOverTitle.textContent = "Внутренние стены пали";
+                ui.gameOverText.textContent = "Титаны продавили ядро обороны. Ты можешь вернуться в бой и попробовать удержать ритм дольше.";
+            } else {
+                ui.gameOverTopline.textContent = "Потеря бойца";
+                ui.gameOverTitle.textContent = "Отряд лишился лидера";
+                ui.gameOverText.textContent = "Тебя смяли в ближнем бою. Следующий заход потребует чище позиционироваться и не жечь газ зря.";
+            }
+
+            ui.finalScore.textContent = Math.round(state.score).toString();
+            ui.finalKills.textContent = state.kills.toString();
+            ui.finalWave.textContent = state.wave.toString();
+            ui.finalCombo.textContent = `x${state.bestCombo}`;
+            ui.gameOverOverlay.classList.remove("hidden");
+        }
+
+        function updateObjective() {
+            if (state.practice) {
+                ui.objectiveText.innerHTML = "<strong>Режим:</strong> разминка без лимита волн. Тренируй обходы и удары по затылку.";
+                return;
+            }
+
+            const remaining = Math.max(0, Math.ceil(state.waveTimer));
+            ui.objectiveText.innerHTML = `<strong>Волна ${state.wave}:</strong> переживи натиск ещё ${remaining} сек. и не дай ядру обороны упасть.`;
+        }
+
+        function updateUI() {
+            ui.healthValue.textContent = Math.round(player.hp).toString();
+            ui.gasValue.textContent = Math.round(player.gas).toString();
+            ui.ammoValue.textContent = `${player.ammo}/${player.maxAmmo}`;
+            ui.scoreValue.textContent = Math.round(state.score).toString();
+            ui.comboValue.textContent = `x${state.combo}`;
+            ui.waveValue.textContent = state.practice ? "Тренировка" : `Волна ${state.wave}`;
+            ui.healthBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
+            ui.gasBar.style.width = `${(player.gas / player.maxGas) * 100}%`;
+            ui.ammoBar.style.width = `${(player.ammo / player.maxAmmo) * 100}%`;
+        }
+
+        function spawnTitan(forceEdge = null) {
+            const edge = forceEdge ?? Math.floor(rand(0, 4));
+            let x = 0;
+            let y = 0;
+
+            if (edge === 0) {
+                x = rand(60, world.width - 60);
+                y = -50;
+            } else if (edge === 1) {
+                x = world.width + 50;
+                y = rand(60, world.height - 60);
+            } else if (edge === 2) {
+                x = rand(60, world.width - 60);
+                y = world.height + 50;
+            } else {
+                x = -50;
+                y = rand(60, world.height - 60);
+            }
+
+            const scale = rand(0.92, 1.4) + state.wave * 0.03;
+            const titan = {
+                x,
+                y,
+                vx: 0,
+                vy: 0,
+                radius: 32 * scale,
+                hp: 90 + state.wave * 16 * scale,
+                maxHp: 90 + state.wave * 16 * scale,
+                speed: rand(42, 62) + state.wave * 1.8,
+                attackCooldown: rand(0.2, 0.8),
+                facing: rand(-Math.PI, Math.PI),
+                turnSpeed: rand(1.6, 2.3),
+                slug: rand(0.85, 1.15),
+                damaged: 0
+            };
+            titans.push(titan);
+        }
+
+        function spawnWave() {
+            state.wave += 1;
+            state.waveTimer = 20 + state.wave * 2.4;
+            state.spawnBudget = 6 + state.wave * 2.3;
+            state.combo = Math.max(1, state.combo);
+            createFloatingText(world.width * 0.5, 120, `ВОЛНА ${state.wave}`, "#f0ba63", 1.8, true);
+        }
+
+        function createParticle(x, y, color, speed = 100, life = 0.45, size = 4) {
+            particles.push({
+                x,
+                y,
+                vx: rand(-1, 1) * speed,
+                vy: rand(-1, 1) * speed,
+                life,
+                maxLife: life,
+                size,
+                color
+            });
+        }
+
+        function burst(x, y, color, count) {
+            for (let i = 0; i < count; i += 1) {
+                createParticle(x, y, color, rand(40, 260), rand(0.25, 0.9), rand(2, 7));
+            }
+        }
+
+        function createFloatingText(x, y, text, color, life = 1.1, dramatic = false) {
+            floatingTexts.push({
+                x,
+                y,
+                text,
+                color,
+                life,
+                maxLife: life,
+                dramatic
+            });
+        }
+
+        function handleInput(dt) {
+            let dx = 0;
+            let dy = 0;
+
+            if (input.keys.has("KeyW")) dy -= 1;
+            if (input.keys.has("KeyS")) dy += 1;
+            if (input.keys.has("KeyA")) dx -= 1;
+            if (input.keys.has("KeyD")) dx += 1;
+            dx += input.virtual.dx;
+            dy += input.virtual.dy;
+
+            const len = Math.hypot(dx, dy) || 1;
+            dx /= len;
+            dy /= len;
+
+            const boosting = input.keys.has("ShiftLeft") || input.keys.has("ShiftRight");
+            const canBoost = boosting && player.gas > 0;
+            const speed = canBoost ? player.boost : player.speed;
+
+            player.vx = dx * speed;
+            player.vy = dy * speed;
+
+            if (dx !== 0 || dy !== 0) {
+                player.facing = Math.atan2(dy, dx);
+            } else {
+                player.facing = Math.atan2(input.mouse.y - player.y, input.mouse.x - player.x);
+            }
+
+            player.x += player.vx * dt;
+            player.y += player.vy * dt;
+            player.x = clamp(player.x, 20, world.width - 20);
+            player.y = clamp(player.y, 20, world.height - 20);
+
+            if (canBoost && (dx !== 0 || dy !== 0)) {
+                player.gas = Math.max(0, player.gas - player.boostDrain * dt);
+                for (let i = 0; i < 2; i += 1) {
+                    createParticle(player.x, player.y, "rgba(106,182,255,0.8)", 70, 0.35, 3);
+                }
+            } else {
+                player.gas = Math.min(player.maxGas, player.gas + player.regenGas * dt);
+            }
+
+            player.slashCooldown = Math.max(0, player.slashCooldown - dt);
+            player.shotCooldown = Math.max(0, player.shotCooldown - dt);
+            if (player.ammo < player.maxAmmo) {
+                player.reloadTimer = Math.max(0, player.reloadTimer - dt);
+                if (player.reloadTimer <= 0) {
+                    player.ammo += 1;
+                    player.reloadTimer = player.ammo < player.maxAmmo ? 0.62 : 0;
+                }
+            }
+            player.invuln = Math.max(0, player.invuln - dt);
+        }
+
+        function aimAtNearestTitan() {
+            let bestTitan = null;
+            let bestDistance = Infinity;
+            for (const titan of titans) {
+                if (titan.dead) continue;
+                const dist = distance(player.x, player.y, titan.x, titan.y);
+                if (dist < bestDistance) {
+                    bestDistance = dist;
+                    bestTitan = titan;
+                }
+            }
+
+            if (bestTitan) {
+                input.mouse.x = bestTitan.x;
+                input.mouse.y = bestTitan.y;
+            }
+        }
+
+        function tryShoot(autoAim = false) {
+            if (state.mode !== "running" || player.shotCooldown > 0) return;
+
+            if (player.ammo <= 0) {
+                createFloatingText(player.x, player.y - 30, "RELOAD", "#f0ba63", 0.55, false);
+                return;
+            }
+
+            if (autoAim) aimAtNearestTitan();
+            const angle = Math.atan2(input.mouse.y - player.y, input.mouse.x - player.x);
+            player.facing = angle;
+            player.ammo -= 1;
+            player.shotCooldown = 0.16;
+            if (player.reloadTimer <= 0) player.reloadTimer = 0.62;
+
+            projectiles.push({
+                x: player.x + Math.cos(angle) * 24,
+                y: player.y + Math.sin(angle) * 24,
+                vx: Math.cos(angle) * 820,
+                vy: Math.sin(angle) * 820,
+                angle,
+                life: 0.95,
+                maxLife: 0.95,
+                radius: 7
+            });
+
+            state.shake = Math.max(state.shake, 2.5);
+            createParticle(player.x, player.y, "rgba(240,186,99,0.85)", 120, 0.25, 4);
+        }
+
+        function trySlash() {
+            if (state.mode !== "running" || player.slashCooldown > 0) return;
+
+            player.slashCooldown = 0.32;
+            slashArcs.push({
+                x: player.x,
+                y: player.y,
+                angle: player.facing,
+                life: 0.16,
+                maxLife: 0.16
+            });
+
+            let hitSomething = false;
+
+            for (const titan of titans) {
+                const dist = distance(player.x, player.y, titan.x, titan.y);
+                if (dist > titan.radius + 54) continue;
+
+                const angleToPlayer = Math.atan2(player.y - titan.y, player.x - titan.x);
+                const fromBehind = Math.abs(angleDiff(angleToPlayer, titan.facing + Math.PI)) < 0.95;
+                const facingTarget = Math.abs(angleDiff(player.facing, angleToPlayer)) < 1.15;
+
+                if (!facingTarget) continue;
+
+                hitSomething = true;
+                const damage = fromBehind ? 65 + 10 * (state.combo - 1) : 18;
+                titan.hp -= damage;
+                titan.damaged = 0.18;
+
+                burst(
+                    titan.x + Math.cos(angleToPlayer) * titan.radius * 0.4,
+                    titan.y + Math.sin(angleToPlayer) * titan.radius * 0.4,
+                    fromBehind ? "rgba(240,186,99,0.95)" : "rgba(212,84,67,0.95)",
+                    fromBehind ? 16 : 7
+                );
+
+                createFloatingText(
+                    titan.x,
+                    titan.y - titan.radius - 10,
+                    fromBehind ? `КРИТ ${Math.round(damage)}` : `${Math.round(damage)}`,
+                    fromBehind ? "#f0ba63" : "#ff8b80",
+                    0.9,
+                    fromBehind
+                );
+
+                if (fromBehind) {
+                    state.comboTimer = 2.3;
+                } else {
+                    state.comboTimer = Math.max(state.comboTimer, 0.9);
+                }
+
+                if (titan.hp <= 0) {
+                    const killScore = fromBehind ? 120 : 40;
+                    state.score += killScore * state.combo;
+                    state.kills += 1;
+                    state.combo = Math.min(9, state.combo + 1);
+                    state.bestCombo = Math.max(state.bestCombo, state.combo);
+                    state.comboTimer = 3.2;
+                    burst(titan.x, titan.y, fromBehind ? "rgba(240,186,99,1)" : "rgba(212,84,67,1)", 22);
+                    createFloatingText(titan.x, titan.y - 30, "ЛИКВИДИРОВАН", "#ffffff", 1.2, true);
+                    titan.dead = true;
+                }
+            }
+
+            if (!hitSomething) {
+                state.combo = Math.max(1, state.combo - 1);
+            }
+        }
+
+        function finishTitan(titan, fromBehind) {
+            const killScore = fromBehind ? 150 : 70;
+            state.score += killScore * state.combo;
+            state.kills += 1;
+            state.combo = Math.min(9, state.combo + 1);
+            state.bestCombo = Math.max(state.bestCombo, state.combo);
+            state.comboTimer = 3.2;
+            burst(titan.x, titan.y, fromBehind ? "rgba(240,186,99,1)" : "rgba(212,84,67,1)", 24);
+            createFloatingText(titan.x, titan.y - 30, "DOWN", "#ffffff", 1.05, true);
+            titan.dead = true;
+        }
+
+        function updateProjectiles(dt) {
+            for (let i = projectiles.length - 1; i >= 0; i -= 1) {
+                const shot = projectiles[i];
+                shot.life -= dt;
+                shot.x += shot.vx * dt;
+                shot.y += shot.vy * dt;
+
+                let removeShot = shot.life <= 0
+                    || shot.x < -80 || shot.x > world.width + 80
+                    || shot.y < -80 || shot.y > world.height + 80;
+
+                if (!removeShot) {
+                    for (const titan of titans) {
+                        if (titan.dead) continue;
+                        if (distance(shot.x, shot.y, titan.x, titan.y) > titan.radius + shot.radius) continue;
+
+                        const hitAngle = Math.atan2(shot.y - titan.y, shot.x - titan.x);
+                        const fromBehind = Math.abs(angleDiff(hitAngle, titan.facing + Math.PI)) < 1.05;
+                        const damage = fromBehind ? 95 + 12 * (state.combo - 1) : 42;
+                        titan.hp -= damage;
+                        titan.damaged = 0.22;
+                        removeShot = true;
+
+                        burst(shot.x, shot.y, fromBehind ? "rgba(240,186,99,0.95)" : "rgba(212,84,67,0.9)", fromBehind ? 18 : 9);
+                        createFloatingText(
+                            titan.x,
+                            titan.y - titan.radius - 10,
+                            fromBehind ? `CRIT ${Math.round(damage)}` : `${Math.round(damage)}`,
+                            fromBehind ? "#f0ba63" : "#ff8b80",
+                            0.82,
+                            fromBehind
+                        );
+
+                        state.comboTimer = fromBehind ? 2.8 : Math.max(state.comboTimer, 1.1);
+                        if (titan.hp <= 0) finishTitan(titan, fromBehind);
+                        break;
+                    }
+                }
+
+                if (removeShot) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateTitans(dt) {
+            for (const titan of titans) {
+                const dxGate = world.gate.x - titan.x;
+                const dyGate = world.gate.y - titan.y;
+                const distGate = Math.hypot(dxGate, dyGate) || 1;
+
+                const dxPlayer = player.x - titan.x;
+                const dyPlayer = player.y - titan.y;
+                const distPlayer = Math.hypot(dxPlayer, dyPlayer) || 1;
+
+                const playerThreat = distPlayer < 190 ? 0.72 : 0.0;
+                const targetX = lerp(world.gate.x, player.x, playerThreat);
+                const targetY = lerp(world.gate.y, player.y, playerThreat);
+                const desired = Math.atan2(targetY - titan.y, targetX - titan.x);
+                titan.facing += clamp(angleDiff(desired, titan.facing), -titan.turnSpeed * dt, titan.turnSpeed * dt);
+
+                const moving = distGate > world.gate.radius + titan.radius + 8;
+                if (moving) {
+                    titan.vx = Math.cos(titan.facing) * titan.speed * titan.slug;
+                    titan.vy = Math.sin(titan.facing) * titan.speed * titan.slug;
+                    titan.x += titan.vx * dt;
+                    titan.y += titan.vy * dt;
+                } else {
+                    titan.vx *= 0.92;
+                    titan.vy *= 0.92;
+                    titan.x += titan.vx * dt;
+                    titan.y += titan.vy * dt;
+                }
+
+                titan.attackCooldown -= dt;
+                titan.damaged = Math.max(0, titan.damaged - dt);
+
+                if (distGate <= world.gate.radius + titan.radius + 8 && titan.attackCooldown <= 0) {
+                    titan.attackCooldown = rand(0.65, 1.1);
+                    world.gate.hp = Math.max(0, world.gate.hp - rand(18, 30));
+                    state.shake = Math.max(state.shake, 9);
+                    burst(
+                        world.gate.x + Math.cos(titan.facing) * world.gate.radius,
+                        world.gate.y + Math.sin(titan.facing) * world.gate.radius,
+                        "rgba(255,210,130,0.7)",
+                        10
+                    );
+                }
+
+                if (distPlayer <= titan.radius + player.radius + 16 && titan.attackCooldown <= 0 && player.invuln <= 0) {
+                    titan.attackCooldown = rand(0.85, 1.25);
+                    player.hp = Math.max(0, player.hp - rand(12, 20));
+                    player.invuln = 0.7;
+                    state.hitFlash = 0.35;
+                    state.shake = Math.max(state.shake, 7);
+                    createFloatingText(player.x, player.y - 34, "-HP", "#ff9b91", 0.8, false);
+                    burst(player.x, player.y, "rgba(212,84,67,0.8)", 8);
+                }
+            }
+
+            for (let i = titans.length - 1; i >= 0; i -= 1) {
+                if (titans[i].dead) {
+                    titans.splice(i, 1);
+                }
+            }
+        }
+
+        function updateWave(dt) {
+            if (state.practice) {
+                if (titans.length < 7 && Math.random() < dt * 1.7) {
+                    spawnTitan();
+                }
+                return;
+            }
+
+            state.waveTimer -= dt;
+            state.spawnBudget -= dt * (0.82 + state.wave * 0.08);
+
+            if (state.spawnBudget <= 0) {
+                state.spawnBudget = rand(1.2, 2.3);
+                spawnTitan();
+                if (state.wave >= 3 && Math.random() < 0.26) {
+                    spawnTitan();
+                }
+            }
+
+            if (state.waveTimer <= 0) {
+                spawnWave();
+            }
+        }
+
+        function updateEffects(dt) {
+            state.comboTimer = Math.max(0, state.comboTimer - dt);
+            if (state.comboTimer <= 0) {
+                state.combo = 1;
+            }
+
+            state.hitFlash = Math.max(0, state.hitFlash - dt);
+            state.shake = Math.max(0, state.shake - dt * 18);
+
+            for (let i = particles.length - 1; i >= 0; i -= 1) {
+                const p = particles[i];
+                p.life -= dt;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.vx *= 0.97;
+                p.vy *= 0.97;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = slashArcs.length - 1; i >= 0; i -= 1) {
+                slashArcs[i].life -= dt;
+                if (slashArcs[i].life <= 0) slashArcs.splice(i, 1);
+            }
+
+            for (let i = floatingTexts.length - 1; i >= 0; i -= 1) {
+                const item = floatingTexts[i];
+                item.life -= dt;
+                item.y -= dt * (item.dramatic ? 34 : 24);
+                if (item.life <= 0) floatingTexts.splice(i, 1);
+            }
+        }
+
+        function update(dt) {
+            if (state.mode !== "running") return;
+
+            state.time += dt;
+            handleInput(dt);
+            updateProjectiles(dt);
+            updateTitans(dt);
+            updateWave(dt);
+            updateEffects(dt);
+
+            if (world.gate.hp <= 0) endRun("gate");
+            if (player.hp <= 0) endRun("player");
+
+            updateObjective();
+            updateUI();
+        }
+
+        function drawBackground() {
+            const grad = ctx.createLinearGradient(0, 0, 0, world.height);
+            grad.addColorStop(0, "#1b2a3b");
+            grad.addColorStop(0.36, "#202531");
+            grad.addColorStop(1, "#0b1016");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, world.width, world.height);
+
+            ctx.fillStyle = "rgba(255,255,255,0.04)";
+            for (let i = 0; i < 60; i += 1) {
+                ctx.fillRect(i * 24, 0, 1, world.height);
+            }
+            for (let i = 0; i < 32; i += 1) {
+                ctx.fillRect(0, i * 24, world.width, 1);
+            }
+
+            const skyline = [
+                [0, 550], [80, 520], [120, 540], [170, 470], [220, 510], [290, 420], [360, 500],
+                [430, 370], [470, 420], [540, 330], [620, 500], [700, 350], [760, 390], [830, 300],
+                [910, 510], [990, 370], [1080, 460], [1140, 390], [1210, 500], [1280, 440], [1280, 720], [0, 720]
+            ];
+            ctx.fillStyle = "rgba(11,14,20,0.78)";
+            ctx.beginPath();
+            ctx.moveTo(skyline[0][0], skyline[0][1]);
+            skyline.forEach(([x, y]) => ctx.lineTo(x, y));
+            ctx.closePath();
+            ctx.fill();
+
+            for (let i = 0; i < 8; i += 1) {
+                const towerX = 110 + i * 145;
+                const towerH = 90 + (i % 3) * 55;
+                ctx.fillStyle = "rgba(28, 33, 43, 0.76)";
+                ctx.fillRect(towerX, world.height - 150 - towerH, 28, towerH);
+                ctx.fillStyle = "rgba(255, 212, 148, 0.2)";
+                ctx.fillRect(towerX + 9, world.height - 150 - towerH + 18, 10, 10);
+            }
+        }
+
+        function drawGate() {
+            const hpRatio = world.gate.hp / world.gate.maxHp;
+
+            ctx.save();
+            ctx.translate(world.gate.x, world.gate.y);
+
+            ctx.fillStyle = "rgba(255,255,255,0.04)";
+            ctx.beginPath();
+            ctx.arc(0, 0, world.gate.radius + 34, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "rgba(240,186,99,0.12)";
+            ctx.beginPath();
+            ctx.arc(0, 0, world.gate.radius + 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#d3b585";
+            ctx.beginPath();
+            ctx.arc(0, 0, world.gate.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = "rgba(67,40,20,0.4)";
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(0, 0, world.gate.radius - 24, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = "#6d4d31";
+            ctx.fillRect(-26, -42, 52, 84);
+            ctx.fillStyle = "#8f6744";
+            ctx.fillRect(-9, -42, 18, 84);
+
+            ctx.strokeStyle = "rgba(255,255,255,0.15)";
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(0, 0, world.gate.radius + 24, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * hpRatio);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.facing);
+
+            if (player.invuln > 0 && Math.floor(player.invuln * 20) % 2 === 0) {
+                ctx.globalAlpha = 0.45;
+            }
+
+            ctx.fillStyle = "#dfe7f3";
+            ctx.beginPath();
+            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#4e5f78";
+            ctx.fillRect(-8, -player.radius - 10, 16, 22);
+
+            ctx.strokeStyle = "#91d4ff";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-4, 4);
+            ctx.lineTo(28, 0);
+            ctx.moveTo(-4, -4);
+            ctx.lineTo(28, -8);
+            ctx.stroke();
+
+            ctx.fillStyle = "#f0ba63";
+            ctx.beginPath();
+            ctx.moveTo(24, 0);
+            ctx.lineTo(36, -3);
+            ctx.lineTo(36, 3);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawTitan(titan) {
+            ctx.save();
+            ctx.translate(titan.x, titan.y);
+            ctx.rotate(titan.facing);
+
+            ctx.fillStyle = titan.damaged > 0 ? "#ff9d8a" : "#d59a76";
+            ctx.beginPath();
+            ctx.ellipse(0, 0, titan.radius * 0.74, titan.radius, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "rgba(111, 44, 34, 0.72)";
+            ctx.fillRect(-titan.radius * 0.26, -titan.radius * 0.3, titan.radius * 0.52, titan.radius * 0.9);
+
+            ctx.fillStyle = "#2b1b18";
+            ctx.beginPath();
+            ctx.arc(titan.radius * 0.34, -titan.radius * 0.16, titan.radius * 0.08, 0, Math.PI * 2);
+            ctx.arc(titan.radius * 0.34, titan.radius * 0.16, titan.radius * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "rgba(240,186,99,0.5)";
+            ctx.beginPath();
+            ctx.arc(-titan.radius * 0.9, 0, titan.radius * 0.34, 0, Math.PI * 2);
+            ctx.fill();
+
+            const hpRatio = titan.hp / titan.maxHp;
+            ctx.fillStyle = "rgba(0,0,0,0.45)";
+            ctx.fillRect(-titan.radius, titan.radius + 16, titan.radius * 2, 8);
+            ctx.fillStyle = "#d45443";
+            ctx.fillRect(-titan.radius, titan.radius + 16, titan.radius * 2 * hpRatio, 8);
+
+            ctx.restore();
+        }
+
+        function drawSlashArcs() {
+            for (const arc of slashArcs) {
+                const alpha = arc.life / arc.maxLife;
+                ctx.save();
+                ctx.translate(arc.x, arc.y);
+                ctx.rotate(arc.angle);
+                ctx.strokeStyle = `rgba(255, 243, 200, ${alpha})`;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(0, 0, 58, -0.65, 0.65);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function drawProjectiles() {
+            for (const shot of projectiles) {
+                const alpha = clamp(shot.life / shot.maxLife, 0, 1);
+                ctx.save();
+                ctx.translate(shot.x, shot.y);
+                ctx.rotate(shot.angle);
+                ctx.strokeStyle = `rgba(145, 212, 255, ${alpha * 0.72})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-28, 0);
+                ctx.lineTo(8, 0);
+                ctx.stroke();
+
+                ctx.fillStyle = `rgba(240, 186, 99, ${alpha})`;
+                ctx.beginPath();
+                ctx.moveTo(12, 0);
+                ctx.lineTo(-4, -5);
+                ctx.lineTo(-1, 0);
+                ctx.lineTo(-4, 5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawParticles() {
+            for (const p of particles) {
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawFloatingTexts() {
+            for (const item of floatingTexts) {
+                const alpha = item.life / item.maxLife;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = item.color;
+                ctx.font = item.dramatic ? "800 28px Orbitron" : "800 20px Manrope";
+                ctx.textAlign = "center";
+                ctx.fillText(item.text, item.x, item.y);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawCenterWarning() {
+            const hpRatio = world.gate.hp / world.gate.maxHp;
+            if (hpRatio > 0.45) return;
+
+            const alpha = 0.25 + Math.sin(state.time * 9) * 0.18;
+            ctx.fillStyle = `rgba(212, 84, 67, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(world.gate.x, world.gate.y, world.gate.radius + 58, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function render() {
+            const shakeX = state.shake > 0 ? rand(-state.shake, state.shake) : 0;
+            const shakeY = state.shake > 0 ? rand(-state.shake, state.shake) : 0;
+
+            ctx.save();
+            ctx.clearRect(0, 0, world.width, world.height);
+            ctx.translate(shakeX, shakeY);
+
+            drawBackground();
+            drawCenterWarning();
+            drawGate();
+
+            for (const titan of titans) drawTitan(titan);
+            drawProjectiles();
+            drawPlayer();
+            drawSlashArcs();
+            drawParticles();
+            drawFloatingTexts();
+
+            ctx.restore();
+
+            if (state.hitFlash > 0) {
+                ctx.fillStyle = `rgba(212, 84, 67, ${state.hitFlash * 0.22})`;
+                ctx.fillRect(0, 0, world.width, world.height);
+            }
+        }
+
+        let lastTime = performance.now();
+
+        function loop(now) {
+            const dt = Math.min((now - lastTime) / 1000, 0.033);
+            lastTime = now;
+            update(dt);
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        function onKeyDown(event) {
+            input.keys.add(event.code);
+            if (event.code === "Space") {
+                event.preventDefault();
+                if (state.mode === "running") tryShoot(true);
+            }
+            if (event.code === "KeyF") {
+                if (state.mode === "running") trySlash();
+            }
+        }
+
+        function onKeyUp(event) {
+            input.keys.delete(event.code);
+        }
+
+        function updateMouse(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = world.width / rect.width;
+            const scaleY = world.height / rect.height;
+            input.mouse.x = (event.clientX - rect.left) * scaleX;
+            input.mouse.y = (event.clientY - rect.top) * scaleY;
+        }
+
+        canvas.addEventListener("mousemove", updateMouse);
+        canvas.addEventListener("mousedown", (event) => {
+            input.mouse.down = true;
+            updateMouse(event);
+            if (state.mode === "running") tryShoot();
+        });
+        canvas.addEventListener("mouseup", () => {
+            input.mouse.down = false;
+        });
+
+        window.addEventListener("keydown", onKeyDown);
+        window.addEventListener("keyup", onKeyUp);
+
+        function setTouchAim(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = world.width / rect.width;
+            const scaleY = world.height / rect.height;
+            input.mouse.x = (clientX - rect.left) * scaleX;
+            input.mouse.y = (clientY - rect.top) * scaleY;
+        }
+
+        function resetStick() {
+            input.virtual.dx = 0;
+            input.virtual.dy = 0;
+            input.virtual.active = false;
+            ui.stickKnob.style.transform = "translate(-50%, -50%)";
+        }
+
+        ui.moveStick.addEventListener("pointerdown", (event) => {
+            ui.moveStick.setPointerCapture(event.pointerId);
+            input.virtual.active = true;
+        });
+
+        ui.moveStick.addEventListener("pointermove", (event) => {
+            if (!input.virtual.active) return;
+            const rect = ui.moveStick.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const rawX = event.clientX - centerX;
+            const rawY = event.clientY - centerY;
+            const max = rect.width * 0.34;
+            const len = Math.hypot(rawX, rawY);
+            const scale = len > max ? max / len : 1;
+            const knobX = rawX * scale;
+            const knobY = rawY * scale;
+            input.virtual.dx = clamp(rawX / max, -1, 1);
+            input.virtual.dy = clamp(rawY / max, -1, 1);
+            ui.stickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+        });
+
+        ui.moveStick.addEventListener("pointerup", resetStick);
+        ui.moveStick.addEventListener("pointercancel", resetStick);
+
+        ui.touchFire.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            tryShoot(true);
+        });
+
+        ui.startButton.addEventListener("click", () => resetRun(false));
+        ui.practiceButton.addEventListener("click", () => resetRun(true));
+        ui.restartButton.addEventListener("click", () => resetRun(state.practice));
+        ui.menuButton.addEventListener("click", backToMenu);
+
+        updateUI();
+        render();
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
