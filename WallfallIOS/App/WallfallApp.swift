@@ -4,7 +4,7 @@ import SwiftUI
 struct WallfallApp: App {
     var body: some Scene {
         WindowGroup {
-            GameWebView()
+            GameView()
                 .ignoresSafeArea()
         }
     }

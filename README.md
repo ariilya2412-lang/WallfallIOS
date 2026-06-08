@@ -1,12 +1,22 @@
-# Wallfall iOS
+# Skyline Rush
 
-Native iPhone wrapper for the local `Wallfall: Titan Break` canvas game.
+Native iPhone arcade game built with SwiftUI and SpriteKit.
 
-## How to open
+## What it is
 
-1. Open `WallfallIOS.xcodeproj` in Xcode on macOS.
-2. Select the `WallfallIOS` scheme.
-3. In Signing & Capabilities, choose your Apple Team.
-4. Build to an iPhone or archive/export an IPA.
+`Skyline Rush` is a portrait-mode arcade defense game. Tap or drag to fire energy harpoons, stop enemies before they breach the city wall, clear handcrafted levels, build combo score, and restart quickly when the wall falls.
 
-The game is bundled locally as `WallfallIOS/Resources/index.html`. No server, account, cloud, or paid library is used.
+## Included
+
+- Native SwiftUI app shell.
+- SpriteKit game scene, not a web page.
+- Portrait iPhone layout.
+- Three escalating levels.
+- Score, combo, wall integrity, level progression, win and loss screens.
+- Local-only gameplay with no server, account, cloud, or paid library.
+
+## Build
+
+Open `WallfallIOS.xcodeproj` in Xcode, choose the `WallfallIOS` scheme, set your signing team, and run on iPhone.
+
+The GitHub Actions workflow can also build an unsigned IPA artifact for sideloading experiments.

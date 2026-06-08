@@ -8,18 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* WallfallApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* WallfallApp.swift */; };
-		A10000000000000000000002 /* GameWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* GameWebView.swift */; };
-		A10000000000000000000003 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* index.html */; };
+		A10000000000000000000002 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* GameView.swift */; };
 		A10000000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Assets.xcassets */; };
+		A10000000000000000000005 /* SkylineRushScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* SkylineRushScene.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000010 /* WallfallIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WallfallIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* WallfallApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallfallApp.swift; sourceTree = "<group>"; };
-		A10000000000000000000012 /* GameWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameWebView.swift; sourceTree = "<group>"; };
-		A10000000000000000000013 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		A10000000000000000000012 /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000016 /* SkylineRushScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkylineRushScene.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,7 +62,8 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000011 /* WallfallApp.swift */,
-				A10000000000000000000012 /* GameWebView.swift */,
+				A10000000000000000000012 /* GameView.swift */,
+				A10000000000000000000016 /* SkylineRushScene.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -71,7 +72,6 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000015 /* Info.plist */,
-				A10000000000000000000013 /* index.html */,
 				A10000000000000000000014 /* Assets.xcassets */,
 			);
 			path = Resources;
@@ -135,7 +135,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000000000000000000003 /* index.html in Resources */,
 				A10000000000000000000004 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -148,7 +147,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* WallfallApp.swift in Sources */,
-				A10000000000000000000002 /* GameWebView.swift in Sources */,
+				A10000000000000000000002 /* GameView.swift in Sources */,
+				A10000000000000000000005 /* SkylineRushScene.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
